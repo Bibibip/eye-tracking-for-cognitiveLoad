@@ -1,2 +1,6 @@
 .venv
 __pycache__
+
+# Feature extraction results
+Gaze/src/Feature/feature.csv
+Gaze/src/Feature/feature_cluster.csv
