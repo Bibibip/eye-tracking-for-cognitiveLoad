@@ -1,5 +1,15 @@
-.venv
-__pycache__
+# Virtual environment
+.venv/
+venv/
 
-# Feature extraction results
-Gaze/data/*
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated features
+data/raw/*
+data/feature_selected.csv
+data/2train_feature.csv
+data/2valid_feature.csv
+data/2test_feature.csv
+data/2scaler.pkl
