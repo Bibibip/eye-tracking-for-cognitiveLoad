@@ -4,20 +4,42 @@ from trial_builder import parse_label, make_trials
 from scipy.spatial import ConvexHull, QhullError
 import pandas as pd
 import numpy as np
+import os
 
-split_df = pd.read_csv("subject_split.csv")
+#split_df = pd.read_csv("subject_split.csv")
 
-print(split_df.columns)
-print(split_df.head())
+#print(split_df.columns)
+#print(split_df.head())
 
-subjects = split_df["subject_id"].tolist()
+#subjects = split_df["subject_id"].tolist()
+BASE_PATH = r"D:\OpenNeuro"
+
+subjects = sorted([
+    d for d in os.listdir(BASE_PATH)
+    if d.startswith("sub-")
+    and os.path.isdir(os.path.join(BASE_PATH, d))
+])
+
+# pupil 데이터가 있는 subject만 사용
+subjects = [
+    subject for subject in subjects
+    if os.path.exists(
+        os.path.join(
+            BASE_PATH,
+            subject,
+            "pupil",
+            f"{subject}_task-memory_pupil.tsv"
+        )
+    )
+]
+
+print(f"Total subjects : {len(subjects)}")
 
 all_features = []
 
 for subject in subjects:
 
     print(f"Processing {subject}...")
-    split = split_df.loc[split_df["subject_id"] == subject, "split"].iloc[0]
    
     gaze_df = load_gaze_data(subject)
     events = load_events(subject)
@@ -65,7 +87,6 @@ for subject in subjects:
         if len(movement) == 0:
             features.append({
                 "subject": subject,
-                "split": split,
                 "trial_id": trial_id,
 
                 "task": info["task"],
@@ -211,7 +232,6 @@ for subject in subjects:
 
         features.append({
             "subject": subject,
-            "split": split,
             "trial_id": trial_id,
 
             "task": info["task"],
@@ -271,7 +291,7 @@ feature_df = pd.concat(
 )
 feature_df = feature_df[feature_df["num_samples"] >= 5]
 
-feature_df.to_csv("feature.csv", index=False)
+feature_df.to_csv("feature_all.csv", index=False)
 
 print(feature_df.head())
 print(feature_df.shape)
