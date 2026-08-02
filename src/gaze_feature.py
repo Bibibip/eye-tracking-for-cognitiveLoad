@@ -289,9 +289,9 @@ feature_df = pd.concat(
     all_features,
     ignore_index=True
 )
-feature_df = feature_df[feature_df["num_samples"] >= 5]
+#feature_df = feature_df[feature_df["num_samples"] >= 5]
 
-feature_df.to_csv("feature_all.csv", index=False)
+feature_df.to_csv("feature_all_gaze.csv", index=False)
 
 print(feature_df.head())
 print(feature_df.shape)
