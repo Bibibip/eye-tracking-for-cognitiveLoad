@@ -1,36 +1,42 @@
 # Gaze-Based Cognitive Load Analysis 
-### A gaze feature extraction module for multimodal cognitive load estimation and lie detection.
-This module estimates **Cognitive Load** using **gaze movement features** extracted from eye-tracking data.
+### A gaze feature extraction module for multimodal cognitive load estimation.
+This repository provides a preprocessing and feature extraction pipeline for gaze-based cognitive load analysis using the OpenNeuro Digit Span dataset.
 
-The pipeline preprocesses gaze coordinates from the OpenNeuro Eye Tracking Dataset, extracts cognitive load-related gaze features, and analyzes whether different cognitive load levels can be naturally separated in the feature space using **K-Means clustering**.
+The current work focuses on extracting gaze features from eye-tracking data, performing exploratory data analysis (EDA), selecting representative features, and investigating whether gaze features alone naturally separate different cognitive load levels using unsupervised clustering.
 
-In future work, this module will be integrated with **Pupil**, **Blink**, and **rPPG** features for multimodal cognitive load estimation and lie detection.
+The extracted gaze features are intended to be integrated with pupil, blink, and rPPG features in a future multimodal cognitive load estimation framework.
 
 
 # Pipeline
 
 ```
-OpenNeuro Eye Tracking Dataset
-(EEG + Eye Tracking + ECG + PPG + Behavioral Data)
+OpenNeuro Digit Span Dataset
+(Eye Tracking)
                 │
                 ▼
 load_data.py
-(Eye Tracking Data Loading)
+(Data Loading)
                 │
                 ▼
 event_parser.py
-(Fixation Event Detection)
+(Event Parsing)
                 │
                 ▼
-feature_extract.py
-(Gaze Feature Extraction)
+trial_builder
+(Trial Segmentation)
                 │
                 ▼
 feature.csv
-                │
-                ▼
+        │
+        ├──────────────► EDA
+        │
+        ├──────────────► Correlation Analysis
+        │
+        ├──────────────► Feature Selection
+        │
+        ▼
 kmeans_clustering.py
-(Unsupervised Clustering)
+(Exploratory Clustering)
 ```
 
 
@@ -38,37 +44,38 @@ kmeans_clustering.py
 
 | File | Description |
 |------|-------------|
-| `load_data.py` | Load eye-tracking data and split into trials |
-| `event_parser.py` | Parse fixation events |
-| `feature_extract.py` | Extract gaze-related features |
-| `kmeans_clustering.py` | Perform K-Means clustering and visualization |
+| `load_data.py` | Load gaze data and preprocess raw eye-tracking signals |
+| `event_parser.py` | Parse event markers from the Digit Span task |
+| `feature_extract.py` | Build trial windows and extract gaze features |
+| `kmeans_clustering.py` | Exploratory K-Means clustering and visualization |
 
 
 # Dataset
 
 ## OpenNeuro Digit Span Dataset
 
-This project uses the **Digit Span Task** dataset provided by OpenNeuro.
+This project uses the OpenNeuro Digit Span dataset.
 
-The dataset includes the following physiological and behavioral signals:
+The dataset contains multiple physiological signals collected during a working memory experiment:
 
 - Eye Tracking
-- EEG
 - Pupillometry
+- EEG
 - ECG
 - Photoplethysmography (PPG)
 - Behavioral Data
 
-The current module utilizes **only the eye-tracking data**.
+This repository currently uses only gaze information extracted from the eye-tracking recordings.
 
 ### Tasks
 
 - Rest
 - Digit Span Task
 
-### Assumed Cognitive Load Levels
+### Cognitive Load Assumption
 
-The cognitive load level was approximated using the task difficulty.
+The dataset does not provide explicit cognitive load labels.
+Following previous working memory studies, task difficulty was used as a proxy:
 
 | Task | Cognitive Load |
 |------|----------------|
@@ -76,51 +83,61 @@ The cognitive load level was approximated using the task difficulty.
 | 9-Digit | Medium |
 | 13-Digit | High |
 
-> **Note:** The dataset does not provide official cognitive load labels. Therefore, task difficulty was used as a proxy for cognitive load during the analysis.
-
 
 # Extracted Features
 
 ## Spatial Features
 
-- Scanpath Length
 - Gaze Dispersion
 - Hull Area
-- Center Distance Standard Deviation
+- Center Distance Statistics
+- Scanpath Length
 
 ## Movement Features
 
 - Movement Mean
-- Movement Coefficient of Variation (CV)
-- Movement Skewness
+- Movement Standard Deviation
+- Movement Maximum
+- Movement Coefficient of Variation
+- Movement Kurtosis
 
-## Temporal Features
+## Velocity Features
 
-- Velocity Mean
+- Mean Velocity
 - Velocity Standard Deviation
+- Maximum Velocity
 
 ## Fixation Features
 
-- Mean Fixation Duration
 - Fixation Count
+- Mean Fixation Duration
+- Maximum Fixation Duration
+  
+# Feature Selection
+Exploratory analysis was performed to remove redundant features before downstream modeling.
 
-After correlation analysis, redundant features were removed, resulting in a final set of **10 representative features**.
+The following analyses were conducted:
 
+- Distribution analysis
+- Boxplot visualization
+- Correlation analysis
+- Variance Inflation Factor (VIF)
+
+Highly correlated or redundant features were removed, reducing the original feature set while preserving complementary gaze information.
 
 # Preprocessing
 
-- Confidence > 0.6
-- Use normalized gaze coordinates only
-- Remove out-of-screen gaze samples
-- Split data into trials
-- Remove trials containing fewer than five samples
+- Remove invalid gaze samples
+- Trial segmentation using event markers
+- Compute gaze movement features
+- Generate one feature vector per trial
 
 
 # Clustering
 
-K-Means clustering was applied to the extracted gaze features.
+K-Means clustering was applied as an exploratory analysis to investigate whether gaze features naturally form groups corresponding to cognitive load.
 
-The optimal number of clusters was determined using the **Silhouette Score**.
+The Silhouette Score was used to compare different values of k.
 
 | k | Silhouette Score |
 |---|------------------|
@@ -129,37 +146,26 @@ The optimal number of clusters was determined using the **Silhouette Score**.
 | 4 | 0.224 |
 | 5 | 0.231 |
 
-The highest Silhouette Score was obtained with **k = 2 (0.375)**.
+The highest score was obtained when k = 2, suggesting that gaze features alone do not clearly separate the three assumed cognitive load levels.
 
-This suggests that the current gaze features tend to form **two major clusters** rather than clearly separating into the assumed three cognitive load levels (Low, Medium, High). These results indicate that gaze features alone may not be sufficient for reliable cognitive load estimation, highlighting the need for multimodal fusion with physiological signals such as pupil dynamics, blink behavior, and rPPG.
-
-
-# Cognitive Load-Related Features
-
-| Feature | Expected Trend Under High Cognitive Load |
-|----------|------------------------------------------|
-| Fixation Duration | Increase |
-| Scanpath Length | Varies depending on task |
-| Gaze Dispersion | Increase |
-| Velocity | Task-dependent |
-| Blink Rate | Decrease *(Future Work)* |
-| Pupil Diameter | Increase *(Future Work)* |
-
-> Most previous studies estimate cognitive load based on baseline changes or machine learning models rather than fixed thresholds.
+These observations indicate that gaze information alone may be insufficient for reliable cognitive load estimation.
 
 
-# Current Limitations
+# Current Progress
 
-- Gaze features alone are insufficient to clearly distinguish cognitive load levels.
-- No ground-truth cognitive load labels are provided in the dataset.
-- The resulting clusters do not perfectly correspond to task difficulty.
-- Pupil and blink features are not yet incorporated.
+✅ OpenNeuro gaze data preprocessing
+✅ Event parsing and trial segmentation
+✅ Gaze feature extraction
+✅ Exploratory Data Analysis (EDA)
+✅ Correlation and VIF-based feature selection
+✅ Exploratory K-Means clustering
 
 # Future Work
 
-- Integrate pupil-based features
-- Integrate blink-related features
-- Perform feature-level fusion with rPPG
-- Temporal synchronization across modalities
-- Cognitive load classification
-- Lie detection pipeline
+- Integrate pupil features
+- Integrate blink features
+- Integrate rPPG features
+- Feature-level multimodal fusion
+- Subject-independent Group K-Fold evaluation
+- Supervised cognitive load classification
+- Lie detection framework
