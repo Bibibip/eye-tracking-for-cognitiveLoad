@@ -86,7 +86,7 @@ python -m venv .venv-webcam
 
 ### Required local asset
 
-The MediaPipe Face Landmarker asset is not committed. Before running the
+[The MediaPipe Face Landmarker asset](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker) is not committed. Before running the
 webcam recorder, place it at:
 
 ```text
@@ -140,12 +140,3 @@ pupil sample associated with each digit onset.
 
 These limitations mean that the current code is suitable for implementation,
 calibration, and integration testing, but not yet for validated deployment.
-
-## Ignored local files
-
-The following are intentionally excluded from Git:
-
-- Virtual environments (`.venv/`, `.venv-webcam/`)
-- MediaPipe model assets (`webcamTest/model/`)
-- Calibration and trial outputs (`webcamTest/output/`)
-- Python caches and the temporary normalized model cache
