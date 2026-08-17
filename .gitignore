@@ -1,15 +1,72 @@
-# Virtual environment
-.venv/
-venv/
-
-# Python cache
+# Python
 __pycache__/
 *.py[cod]
+*.so
 
-# Generated features
-data/raw/*
-data/feature_selected.csv
-data/2train_feature.csv
-data/2valid_feature.csv
-data/2test_feature.csv
-data/2scaler.pkl
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+.venv-webcam/
+webcamTest/.model_cache/
+webcamTest/model/
+webcamTest/output/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# Model weights
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.h5
+*.keras
+
+# Large datasets
+dataset/
+datasets/
+data/
+raw_data/
+# UBFC dataset
+UBFC_ROOT/
+
+# Outputs
+results/
+output/
+outputs/
+runs/
+logs/
+
+# Environment variables
+.env
+
+
+# Gaze Movement Features
+Gaze/output/

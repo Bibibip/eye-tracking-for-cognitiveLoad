@@ -1,171 +1,151 @@
-# Gaze-Based Cognitive Load Analysis 
-### A gaze feature extraction module for multimodal cognitive load estimation.
-This repository provides a preprocessing and feature extraction pipeline for gaze-based cognitive load analysis using the OpenNeuro Digit Span dataset.
+# Gaze and Webcam Pipeline for Cognitive Load Research
 
-The current work focuses on extracting gaze features from eye-tracking data, performing exploratory data analysis (EDA), selecting representative features, and investigating whether gaze features alone naturally separate different cognitive load levels using unsupervised clustering.
+This repository contains the gaze-analysis code and a webcam-based data
+collection prototype developed for cognitive-load research with a digit-span
+task. It is a **code-only** repository: source datasets, trained Branch1
+models, MediaPipe model assets, personal calibration files, and generated
+trial outputs are intentionally excluded.
 
-The extracted gaze features are intended to be integrated with pupil, blink, and rPPG features in a future multimodal cognitive load estimation framework.
+The project currently has two components:
 
+- `Gaze/`: offline gaze preprocessing and trial-level feature extraction for
+  the OpenNeuro Digit Span dataset.
+- `webcamTest/`: a local webcam recorder for collecting iris, blink, and
+  pupil-proxy signals and creating a participant-specific pupil reference.
 
-# Pipeline
+## Repository scope
 
+The repository is intended to document and share the implementation. It is
+not yet a standalone end-to-end cognitive-load classifier. In particular,
+classification accuracy has not been validated using webcam-collected data.
+
+The original Branch1 model expects 41 trial-level features from pupil, gaze,
+and blink signals. The webcam feature schema has been checked against that
+input order, but webcam signals differ from the eye-tracking hardware signals
+used during model training.
+
+## Project structure
+
+```text
+.
+├── Gaze/
+│   ├── src/                 # Offline loading, event parsing, trial building, gaze features
+│   └── experiments/          # Exploratory analysis and feature inspection
+├── webcamTest/
+│   ├── webcam_trial.py       # Webcam capture and manual trial recorder
+│   ├── calibration.py        # Pupil calibration utilities
+│   ├── signal_processing.py  # Iris, EAR blink, and frame-level signal extraction
+│   ├── extract_features.py   # Branch1-compatible trial feature extraction
+│   ├── trial_recorder.py     # Trial and digit-onset recording state
+│   └── requirements.txt      # Dedicated webcam environment dependencies
+├── .gitignore
+└── .gitattributes
 ```
-OpenNeuro Digit Span Dataset
-(Eye Tracking)
-                │
-                ▼
-load_data.py
-(Data Loading)
-                │
-                ▼
-event_parser.py
-(Event Parsing)
-                │
-                ▼
-trial_builder
-(Trial Segmentation)
-                │
-                ▼
-feature.csv
-        │
-        ├──────────────► EDA
-        │
-        ├──────────────► Correlation Analysis
-        │
-        ├──────────────► Feature Selection
-        │
-        ▼
-kmeans_clustering.py
-(Exploratory Clustering)
+
+## Offline gaze pipeline
+
+The `Gaze/` code processes normalized gaze coordinates from the OpenNeuro
+Digit Span dataset and creates one feature vector per trial.
+
+Main feature groups include:
+
+- Gaze movement statistics
+- Gaze dispersion and center-distance statistics
+- Gaze velocity and acceleration statistics
+- Fixation duration statistics
+- Convex-hull area
+
+The dataset uses digit-span difficulty as a cognitive-load proxy:
+
+| Digit span | Load label |
+|---:|---|
+| 5 | Low |
+| 9 | Medium |
+| 13 | High |
+
+## Webcam calibration prototype
+
+The webcam pipeline uses MediaPipe Face Landmarker to collect:
+
+- Iris landmark positions as a webcam gaze proxy
+- Iris-landmark pixel distance as a pupil-size proxy
+- Eye aspect ratio (EAR) as a blink proxy
+
+Run the webcam recorder from the repository root:
+
+```powershell
+.\.venv-webcam\Scripts\python.exe .\webcamTest\webcam_trial.py
 ```
 
+Create the environment if needed:
 
-# File Structure
+```powershell
+python -m venv .venv-webcam
+.\.venv-webcam\Scripts\python.exe -m pip install -r .\webcamTest\requirements.txt
+```
 
-| File | Description |
-|------|-------------|
-| `load_data.py` | Load gaze data and preprocess raw eye-tracking signals |
-| `event_parser.py` | Parse event markers from the Digit Span task |
-| `feature_extract.py` | Build trial windows and extract gaze features |
-| `kmeans_clustering.py` | Exploratory K-Means clustering and visualization |
+### Required local asset
 
+The MediaPipe Face Landmarker asset is not committed. Before running the
+webcam recorder, place it at:
 
-# Dataset
+```text
+webcamTest/model/face_landmarker.task
+```
 
-## OpenNeuro Digit Span Dataset
+### Manual pupil calibration
 
-This project uses the OpenNeuro Digit Span dataset.
+The webcam preview window must have keyboard focus.
 
-The dataset contains multiple physiological signals collected during a working memory experiment:
+1. Keep the face visible and look naturally at the camera for about two seconds.
+2. Press `c` once to start calibration.
+3. For a 5-digit trial, press `s`; press `d` once at each digit onset (five
+   times, approximately one second apart); then press `e` once.
+4. Repeat the same procedure for 9-digit and 13-digit trials.
 
-- Eye Tracking
-- Pupillometry
-- EEG
-- ECG
-- Photoplethysmography (PPG)
-- Behavioral Data
+`e` ends the current trial only. `q` exits the program. At least 27 valid
+digit samples are required. A successful run creates:
 
-This repository currently uses only gaze information extracted from the eye-tracking recordings.
+```text
+webcamTest/output/pupil_reference.json
+webcamTest/output/trial_raw.csv
+```
 
-### Tasks
+The reference JSON stores a participant-specific mean and standard deviation
+for later z-score normalization of digit-level pupil samples.
 
-- Rest
-- Digit Span Task
+## Integration contract for the future task UI
 
-### Cognitive Load Assumption
+When the final task UI is available, it should call the recorder at the
+corresponding task events:
 
-The dataset does not provide explicit cognitive load labels.
-Following previous working memory studies, task difficulty was used as a proxy:
+```python
+recorder.start_trial()                # trial start
+recorder.mark_digit(index, onset)     # immediately when a digit is displayed
+raw_df = recorder.end_trial()         # trial end
+```
 
-| Task | Cognitive Load |
-|------|----------------|
-| 5-Digit | Low |
-| 9-Digit | Medium |
-| 13-Digit | High |
+This preserves the timing needed by `extract_features.py` to identify the
+pupil sample associated with each digit onset.
 
+## Current limitations
 
-# Extracted Features
+- Webcam pupil size is an iris-landmark pixel-distance proxy, not the physical
+  `diameter_3d` measure used in the original training data.
+- Webcam gaze is based on iris position in the camera image, whereas the
+  offline data uses screen-normalized gaze coordinates.
+- Webcam blink events use EAR thresholds rather than the original blink signal.
+- The repository does not include the training data or deployed Branch1 model.
+- Webcam-based classification accuracy remains to be evaluated.
 
-## Spatial Features
+These limitations mean that the current code is suitable for implementation,
+calibration, and integration testing, but not yet for validated deployment.
 
-- Gaze Dispersion
-- Hull Area
-- Center Distance Statistics
-- Scanpath Length
+## Ignored local files
 
-## Movement Features
+The following are intentionally excluded from Git:
 
-- Movement Mean
-- Movement Standard Deviation
-- Movement Maximum
-- Movement Coefficient of Variation
-- Movement Kurtosis
-
-## Velocity Features
-
-- Mean Velocity
-- Velocity Standard Deviation
-- Maximum Velocity
-
-## Fixation Features
-
-- Fixation Count
-- Mean Fixation Duration
-- Maximum Fixation Duration
-  
-# Feature Selection
-Exploratory analysis was performed to remove redundant features before downstream modeling.
-
-The following analyses were conducted:
-
-- Distribution analysis
-- Boxplot visualization
-- Correlation analysis
-- Variance Inflation Factor (VIF)
-
-Highly correlated or redundant features were removed, reducing the original feature set while preserving complementary gaze information.
-
-# Preprocessing
-
-- Remove invalid gaze samples
-- Trial segmentation using event markers
-- Compute gaze movement features
-- Generate one feature vector per trial
-
-
-# Clustering
-
-K-Means clustering was applied as an exploratory analysis to investigate whether gaze features naturally form groups corresponding to cognitive load.
-
-The Silhouette Score was used to compare different values of k.
-
-| k | Silhouette Score |
-|---|------------------|
-| 2 | 0.375 |
-| 3 | 0.204 |
-| 4 | 0.224 |
-| 5 | 0.231 |
-
-The highest score was obtained when k = 2, suggesting that gaze features alone do not clearly separate the three assumed cognitive load levels.
-
-These observations indicate that gaze information alone may be insufficient for reliable cognitive load estimation.
-
-
-# Current Progress
-
-✅ OpenNeuro gaze data preprocessing
-✅ Event parsing and trial segmentation
-✅ Gaze feature extraction
-✅ Exploratory Data Analysis (EDA)
-✅ Correlation and VIF-based feature selection
-✅ Exploratory K-Means clustering
-
-# Future Work
-
-- Integrate pupil features
-- Integrate blink features
-- Integrate rPPG features
-- Feature-level multimodal fusion
-- Subject-independent Group K-Fold evaluation
-- Supervised cognitive load classification
-- Lie detection framework
+- Virtual environments (`.venv/`, `.venv-webcam/`)
+- MediaPipe model assets (`webcamTest/model/`)
+- Calibration and trial outputs (`webcamTest/output/`)
+- Python caches and the temporary normalized model cache
